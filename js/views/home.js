@@ -52,6 +52,12 @@ export function home({ profile, date }) {
     ${icon('right')}
   </a>
 
+  <a class="promo glass" href="#/readings">
+    <span class="promo-ic">${icon('sun', 30)}</span>
+    <span class="promo-text"><small>NEW</small><b>Horoscopes for all 12 signs</b><span>Daily, weekly and monthly readings to share on Facebook as a PDF, photos or post text.</span></span>
+    ${icon('right')}
+  </a>
+
   <div class="today-row">
     <div class="mini glass"><small>Your day</small><b style="color:${scoreColor(r.score)}">${r.score}%</b><span>${esc(r.title)}</span></div>
     <div class="mini glass"><small>Personal day</small><b>${r.pd}</b><span>${esc(num(r.pd).day.title)}</span></div>

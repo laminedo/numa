@@ -47,6 +47,7 @@ export function profileView({ profile, date, params }) {
   <div class="glass card">
     <h4>Your data</h4>
     <p class="muted">Profile, journal and saved charts live only in this browser. Nothing is sent anywhere.</p>
+    <p class="muted small">App version ${esc(document.querySelector('meta[name=app-version]')?.content || 'dev')}</p>
     <div class="row-btns"><button class="btn ghost small" data-action="export">Export journal</button><button class="btn ghost small danger" data-action="reset">Reset app</button></div>
   </div>`;
 }

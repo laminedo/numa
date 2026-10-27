@@ -16,6 +16,8 @@ Run the tests with:
 node tests/run.mjs
 ```
 
+Publishing an update: run `node scripts/release.mjs` before committing. It stamps a new version into `index.html` so browsers fetch the new files instead of cached ones, and open copies of the app show an "Update now" prompt.
+
 All data (profile, journal, saved charts, page name) stays in the browser's localStorage.
 
 Planet positions use JPL's approximate Keplerian elements (valid 1800–2050) and a low-precision Moon series; sign changes and stations are found at local noon, so their dates can differ by a day from published ephemerides.

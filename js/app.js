@@ -12,7 +12,7 @@ import { profileView, onboarding } from './views/profile.js';
 import { readings } from './views/readings.js';
 import { exportPdf, exportImages, exportSign, signCaption, allCaption } from './export.js';
 
-const NAV = [['home', 'Home', 'home'], ['calc', 'Calculator', 'calculator'], ['calendar', 'Calendar', 'calendar'], ['search', 'Search', 'search'], ['profile', 'Profile', 'user']];
+const NAV = [['home', 'Home', 'home'], ['calc', 'Calculator', 'calculator'], ['calendar', 'Calendar', 'calendar'], ['readings', 'Horoscopes', 'sun'], ['search', 'Search', 'search'], ['profile', 'Profile', 'user']];
 const ROUTES = { home, calc: calculator, calendar, search, profile: profileView, chat: chatView, readings };
 
 const app = document.getElementById('app');
@@ -228,5 +228,29 @@ function exportJournal() {
 }
 
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') document.querySelector('.sheet-x')?.click(); });
+
+// ---------- updates ----------
+// Browsers may keep an old copy of the app for a while. On start-up, and
+// whenever the app comes back to the foreground, compare our version with the
+// published index.html and offer a one-tap reload when they differ.
+export const VERSION = document.querySelector('meta[name=app-version]')?.content || 'dev';
+let lastCheck = 0;
+async function checkForUpdate() {
+  if (VERSION === 'dev' || Date.now() - lastCheck < 5 * 60_000) return;
+  lastCheck = Date.now();
+  try {
+    const html = await (await fetch(`index.html?check=${Date.now()}`, { cache: 'no-store' })).text();
+    const latest = /name="app-version" content="([^"]+)"/.exec(html)?.[1];
+    if (latest && latest !== VERSION && !document.querySelector('.update-bar')) {
+      const bar = document.createElement('div');
+      bar.className = 'update-bar';
+      bar.innerHTML = `<span>A new version of Numa is ready.</span><button class="btn gold small">Update now</button>`;
+      bar.querySelector('button').addEventListener('click', () => location.replace(`${location.pathname}?v=${encodeURIComponent(latest)}${location.hash}`));
+      document.body.appendChild(bar);
+    }
+  } catch { /* offline: try again later */ }
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkForUpdate(); });
+checkForUpdate();
 window.addEventListener('hashchange', () => render());
 render();
