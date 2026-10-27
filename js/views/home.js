@@ -9,7 +9,7 @@ const TOOLS = [
   ['Forecasts', 'chart', '#/calendar?view=monthly'],
   ['Study', 'book', '#/calc?tab=study'],
   ['Explore', 'globe', '#/search'],
-  ['Checker', 'users', '#/search?tool=checker'],
+  ['Horoscopes', 'sun', '#/readings'],
   ['Western', 'target', '#/calc?tab=western'],
   ['For You', 'sparkle', '#/search?cat=people'],
   ['Ask Numa', 'chat', '#/chat'],

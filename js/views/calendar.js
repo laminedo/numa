@@ -34,7 +34,9 @@ function todayView(b, sel, now, under) {
     lifepath: { badge: r.ud, eyebrow: `${r.ud} Life Path Day`, title: r.title, kw: r.keywords, bring: r.bring, good: r.good, watch: r.watch },
     day: { badge: r.pd, eyebrow: `Personal Day ${r.pd}`, title: r.personal.title, kw: r.personal.keywords, bring: `Your own cycle today: ${r.personal.text}`, good: r.personal.good, watch: r.personal.watch },
     combo: { badge: r.lp, eyebrow: `Life Path ${r.lp} × Day ${r.ud}`, title: r.combo.title, kw: [lpN.title.replace(' (Master)', ''), dayN.day.keywords[0], `${r.score}%`], bring: r.combo.text, good: r.combo.good, watch: r.combo.watch },
-  }[under] || {};
+  };
+  const U = under_[under] ? under : 'lifepath';
+  const cur = under_[U];
 
   return `
   <div class="week-head">
@@ -55,7 +57,7 @@ function todayView(b, sel, now, under) {
     <h3>${esc(r.title)}</h3>
     <p>${esc(r.text)}</p>
     <div class="theme-pills">${r.themes.map((t) => `<span class="pill2">${icon(themeIcon(t), 18)} ${esc(t)}</span>`).join('')}</div>
-    <a class="btn gold wide" href="#/chat?q=${encodeURIComponent(isToday ? 'What is my energy today?' : 'Tell me about this week')}">Get ${isToday ? "Today's" : 'This Day\'s'} Reading</a>
+    <a class="btn gold wide" href="#/chat?q=${encodeURIComponent(isToday ? 'What is my energy today?' : 'What is the energy of this day?')}${isToday ? '' : `&d=${E.toISO(sel)}`}">Get ${isToday ? "Today's" : 'This Day\'s'} Reading</a>
   </div>
 
   ${r.events.map((e) => `<div class="glass card event ${e.kind}"><span class="ev-ic">${icon(e.kind === 'warn' ? 'alert' : e.kind === 'good' ? 'zap' : 'moon', 34)}</span><div><small>ENERGY EVENT</small><h3>${esc(e.title)}</h3><p>${esc(e.text)}</p></div></div>`).join('')}
@@ -68,14 +70,14 @@ function todayView(b, sel, now, under) {
 
   ${sectionTitle('Understand Today')}
   <div class="glass card">
-    <nav class="seg3">${[['lifepath', 'Life Path'], ['day', 'Day'], ['combo', 'Combo']].map(([k, l]) => `<a class="${under === k ? 'on' : ''}" href="${tabsHref(k)}">${l}</a>`).join('')}</nav>
+    <nav class="seg3">${[['lifepath', 'Life Path'], ['day', 'Day'], ['combo', 'Combo']].map(([k, l]) => `<a data-keep class="${U === k ? 'on' : ''}" href="${tabsHref(k)}">${l}</a>`).join('')}</nav>
     <div class="under">
-      <span class="hex">${under_.badge}</span>
-      <div><small class="eyebrow">${esc(under_.eyebrow)}</small><h3>${esc(under_.title)}</h3><p class="kw">${under_.kw.map(esc).join(' • ')}</p></div>
+      <span class="hex">${cur.badge}</span>
+      <div><small class="eyebrow">${esc(cur.eyebrow)}</small><h3>${esc(cur.title)}</h3><p class="kw">${cur.kw.map(esc).join(' • ')}</p></div>
     </div>
-    <h4 class="cap">What today may bring</h4><p>${esc(under_.bring)}</p><hr>
-    <h4 class="cap good">Good for</h4>${list(under_.good, 'good')}
-    <h4 class="cap bad">Watch for</h4>${list(under_.watch, 'bad')}
+    <h4 class="cap">What today may bring</h4><p>${esc(cur.bring)}</p><hr>
+    <h4 class="cap good">Good for</h4>${list(cur.good, 'good')}
+    <h4 class="cap bad">Watch for</h4>${list(cur.watch, 'bad')}
   </div>
 
   ${journal(sel, r, now)}`;
@@ -133,7 +135,7 @@ function monthly(b, sel, now) {
 
 function yearly(b, sel) {
   const y = sel.y;
-  const py = E.personalYearInfo(b, { y, m: b.m, d: Math.min(b.d, 28) });
+  const py = E.personalYearInfo(b, E.birthdayIn(b, y));
   const months = Array.from({ length: 12 }, (_, i) => {
     const d = { y, m: i + 1, d: Math.min(b.d, E.daysInMonth(y, i + 1)) };
     const pm = E.personalMonthInfo(b, d);

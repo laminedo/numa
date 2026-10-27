@@ -14,8 +14,8 @@ const TABS = [
 ];
 
 export function calculator({ profile, date, params }) {
-  const iso = params.get('d') || profile.birth;
-  const b = E.parseISO(iso) || E.parseISO(profile.birth);
+  const b = E.parseISO(params.get('d')) || E.parseISO(profile.birth);
+  const iso = E.toISO(b);
   const isMe = iso === profile.birth;
   const name = params.get('name') ?? (isMe ? profile.name : '');
   const c = E.chart(b, date, { name, time: isMe ? profile.time : '' });
@@ -42,10 +42,10 @@ export function calculator({ profile, date, params }) {
   ${store.saved.length ? `<div class="saved">${store.saved.map((s) => `<a class="chip ${s.date === iso ? 'on' : ''}" href="#/calc?d=${s.date}">${esc(s.label)}</a>`).join('')}${isMe ? '' : `<a class="chip" href="#/calc">My chart</a>`}</div>` : ''}
 
   <nav class="tabs" aria-label="Chart sections">
-    ${TABS.map(([id, label, ic]) => `<a class="tab ${tab === id ? 'on' : ''}" href="${link(iso, id, name)}"><span class="tab-ic">${icon(ic, 20)}</span>${label}</a>`).join('')}
+    ${TABS.map(([id, label, ic]) => `<a data-keep class="tab ${tab === id ? 'on' : ''}" href="${link(iso, id, name)}"><span class="tab-ic">${icon(ic, 20)}</span>${label}</a>`).join('')}
   </nav>
 
-  <section class="panel">${(PANELS[tab] || PANELS.overview)(c, n, date)}</section>`;
+  <section class="panel">${(PANELS[tab] || PANELS.overview)(c, n, date, isMe)}</section>`;
 }
 
 const link = (iso, tab, name) => `#/calc?d=${iso}&tab=${tab}${name ? `&name=${encodeURIComponent(name)}` : ''}`;
@@ -53,9 +53,9 @@ const link = (iso, tab, name) => `#/calc?d=${iso}&tab=${tab}${name ? `&name=${en
 const head = (title, sub, extra = '') => `<div class="glass card"><h3 class="card-title">${title}</h3><p class="lead">${esc(sub)}</p><hr>${extra}</div>`;
 
 const PANELS = {
-  overview: (c, n) => `
+  overview: (c, n, date, isMe) => `
     ${head(`Life Path ${c.lifePath} <span class="tag">${esc(n.title)}</span>`, n.tagline, `<p>${esc(n.overview)}</p>${c.compound !== c.lifePath ? `<p class="muted">Calculated as ${E.reduce(c.birth.m)} + ${E.reduce(c.birth.d)} + ${E.reduce(c.birth.y)} = ${c.compound} → ${c.lifePath}</p>` : ''}`)}
-    <a class="btn gold wide" href="#/chat?q=${encodeURIComponent('Give me my reading for today')}">Get a Reading</a>
+    <a class="btn gold wide" href="#/chat?q=${encodeURIComponent('Give me my reading for today')}${isMe ? '' : `&b=${E.toISO(c.birth)}`}">Get a Reading</a>
     ${accordion('Personality', 'sparkle', 'var(--gold)', `<p>${esc(n.personality)}</p>`, true)}
     ${accordion('Advantages', 'trophy', 'var(--green)', `<p>${esc(n.advantages)}</p>`)}
     ${accordion('Need to do', 'check', 'var(--orange)', `<p>${esc(n.needToDo)}</p>`)}
@@ -93,8 +93,7 @@ const PANELS = {
 
   years: (c, n, date) => {
     const years = Array.from({ length: 9 }, (_, i) => {
-      const d = { y: c.personalYear.year + i, m: c.birth.m, d: Math.min(c.birth.d, 28) };
-      const py = E.personalYearInfo(c.birth, d);
+      const py = E.personalYearInfo(c.birth, E.birthdayIn(c.birth, c.personalYear.year + i));
       return `<div class="yr ${i === 0 ? 'on' : ''}"><b>${py.value}</b><span>${py.year}–${py.year + 1}</span><small>${esc(num(py.value).year.title)}</small></div>`;
     }).join('');
     return `${head(`Personal Year ${c.personalYear.value}`, num(c.personalYear.value).year.title, `<p>${esc(num(c.personalYear.value).year.text)}</p><p class="muted">${E.fmtShort(c.personalYear.start)} → ${E.fmtShort(c.personalYear.end)}</p>`)}

@@ -9,9 +9,11 @@ import { calculator } from './views/calculator.js';
 import { calendar } from './views/calendar.js';
 import { search } from './views/search.js';
 import { profileView, onboarding } from './views/profile.js';
+import { readings } from './views/readings.js';
+import { exportPdf, exportImages, exportSign, signCaption, allCaption } from './export.js';
 
 const NAV = [['home', 'Home', 'home'], ['calc', 'Calculator', 'calculator'], ['calendar', 'Calendar', 'calendar'], ['search', 'Search', 'search'], ['profile', 'Profile', 'user']];
-const ROUTES = { home, calc: calculator, calendar, search, profile: profileView, chat: chatView };
+const ROUTES = { home, calc: calculator, calendar, search, profile: profileView, chat: chatView, readings };
 
 const app = document.getElementById('app');
 
@@ -20,13 +22,26 @@ function parseHash() {
   return { route: path || 'home', params: new URLSearchParams(qs || '') };
 }
 
-function render() {
+// Re-rendering after an action, or switching tabs inside the same view, keeps
+// the scroll position; navigating to a different view starts at the top.
+let lastView = '';
+let keepNext = false;
+document.addEventListener('click', (e) => { if (e.target.closest('a[data-keep]')) keepNext = true; }, true);
+const viewKey = ({ route, params }) => { const p = new URLSearchParams(params); p.delete('u'); p.delete('tab'); return `${route}?${p}`; };
+
+function render({ keepScroll = false } = {}) {
   const profile = store.profile;
   if (!profile?.birth) {
     app.innerHTML = `<main class="screen">${onboarding()}</main>`;
     return;
   }
-  const { route, params } = parseHash();
+  const parsed = parseHash();
+  const { route, params } = parsed;
+  const key = viewKey(parsed);
+  const y = window.scrollY;
+  const stay = keepScroll || keepNext || key === lastView;
+  keepNext = false;
+  lastView = key;
   const view = ROUTES[route] || home;
   const date = E.today();
   app.innerHTML = `
@@ -34,7 +49,7 @@ function render() {
     ${route === 'home' || route === 'chat' ? '' : `<a class="fab" href="#/chat" aria-label="Ask Numa"><span class="orb"></span></a>`}
     <nav class="bottom">${NAV.map(([id, label, ic]) => `<a href="#/${id}" class="${route === id ? 'on' : ''}">${icon(ic, 30)}<span>${label}</span></a>`).join('')}</nav>`;
   if (route === 'chat') mountChat(params);
-  if (!params.get('keep')) window.scrollTo(0, 0);
+  else window.scrollTo(0, stay ? y : 0);
 }
 
 // ---------- chat ----------
@@ -52,13 +67,20 @@ function chatView() {
 
 function mountChat(params) {
   const q = params.get('q');
-  if (q) { history.replaceState(null, '', '#/chat'); ask(q); }
+  if (q) {
+    history.replaceState(null, '', '#/chat');
+    ask(q, { date: E.parseISO(params.get('d')), birth: E.parseISO(params.get('b')) });
+  }
   document.querySelector('.msgs')?.lastElementChild?.scrollIntoView({ block: 'end' });
 }
 
-function ask(q) {
+// ctx.date: answer about another day; ctx.birth: answer about another person's chart.
+function ask(q, ctx = {}) {
+  const who = ctx.birth ? { ...store.profile, birth: E.toISO(ctx.birth), name: '', time: '' } : store.profile;
+  const date = ctx.date || E.today();
+  const prefix = ctx.birth ? `For someone born ${E.fmtLong(ctx.birth)}:\n\n` : '';
   store.pushChat({ who: 'me', text: q });
-  store.pushChat({ who: 'bot', text: answer(q, store.profile) });
+  store.pushChat({ who: 'bot', text: prefix + answer(q, who, date) });
   if (parseHash().route === 'chat') render(); else location.hash = '#/chat';
   requestAnimationFrame(() => document.querySelector('.msgs')?.lastElementChild?.scrollIntoView({ block: 'end', behavior: 'smooth' }));
 }
@@ -122,13 +144,14 @@ document.addEventListener('submit', (e) => {
     case 'journal': {
       store.setJournal(f.dataset.d, { themes: data.getAll('theme'), text: data.get('text').trim(), evening: data.get('evening').trim() });
       toast('Journal saved');
-      render();
+      render({ keepScroll: true });
       break;
     }
   }
 });
 
 document.addEventListener('change', (e) => {
+  if (e.target.name === 'brand') { store.setBrand(e.target.value.trim()); return; }
   const t = e.target.closest('.theme input');
   if (t) t.closest('.theme').classList.toggle('on', t.checked);
 });
@@ -140,7 +163,8 @@ document.addEventListener('click', (e) => {
   const el = e.target.closest('[data-action]');
   if (!el || el.tagName === 'FORM') return;
   const a = el.dataset.action;
-  if (a === 'bookmark') { store.toggleSaved(el.dataset.d, el.dataset.label); toast(store.isSaved(el.dataset.d) ? 'Chart saved' : 'Removed'); render(); }
+  if (a === 'bookmark') { store.toggleSaved(el.dataset.d, el.dataset.label); toast(store.isSaved(el.dataset.d) ? 'Chart saved' : 'Removed'); render({ keepScroll: true }); }
+  if (['export-pdf', 'export-images', 'copy-all', 'sign-image', 'sign-copy'].includes(a)) exportAction(el, a);
   if (a === 'ask-chip') ask(el.textContent);
   if (a === 'clear-chat') { store.clearChat(); render(); }
   if (a === 'share-card') shareCard();
@@ -150,6 +174,33 @@ document.addEventListener('click', (e) => {
   if (a === 'export') exportJournal();
   if (a === 'reset' && confirm('Erase your profile, journal and saved charts from this browser?')) { store.clearAll(); location.hash = ''; render(); }
 });
+
+// ---------- horoscope exports ----------
+async function exportAction(el, a) {
+  const box = el.closest('[data-p]') || document.querySelector('.export[data-p]');
+  const period = box.dataset.p, date = E.parseISO(box.dataset.d);
+  const brandInput = document.querySelector('.export input[name=brand]');
+  if (brandInput) store.setBrand(brandInput.value.trim());
+  const opts = { brand: store.brand, link: `${location.origin}${location.pathname}` };
+  if (a === 'copy-all' || a === 'sign-copy') {
+    const text = a === 'copy-all' ? allCaption(period, date) : signCaption(+el.dataset.s, period, date);
+    try { await navigator.clipboard.writeText(text); toast('Post text copied. Paste it into Facebook.'); }
+    catch { sheet(`<h3>Copy this text</h3><textarea class="copybox" readonly>${esc(text)}</textarea>`, (s) => s.querySelector('textarea').select()); }
+    return;
+  }
+  const label = el.innerHTML;
+  el.disabled = true; el.textContent = 'Preparing…';
+  try {
+    if (a === 'export-pdf') { const r = await exportPdf(period, date, opts); toast(`PDF ready: ${r.pages} pages, ${(r.bytes / 1048576).toFixed(1)} MB`); }
+    if (a === 'export-images') { const r = await exportImages(period, date, opts); if (r === 'saved') toast('Images saved'); }
+    if (a === 'sign-image') { const r = await exportSign(+el.dataset.s, period, date, opts); if (r === 'saved') toast('Image saved'); }
+  } catch (err) {
+    console.error(err);
+    toast('Export failed. Please try again.');
+  } finally {
+    el.disabled = false; el.innerHTML = label;
+  }
+}
 
 function notifications() {
   const b = E.parseISO(store.profile.birth), d = E.today();
@@ -176,5 +227,6 @@ function exportJournal() {
   a.href = URL.createObjectURL(blob); a.download = 'numa-journal.txt'; a.click();
 }
 
-window.addEventListener('hashchange', render);
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') document.querySelector('.sheet-x')?.click(); });
+window.addEventListener('hashchange', () => render());
 render();

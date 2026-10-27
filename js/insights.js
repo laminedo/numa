@@ -59,6 +59,8 @@ export const scoreColor = (s) => (s >= 90 ? 'var(--teal)' : s >= 75 ? 'var(--gre
 
 // ---------- rule-based guide for the chat ----------
 export function answer(question, profile, date = E.today()) {
+  const isToday = E.cmp(date, E.today()) === 0;
+  const When = isToday ? 'Today is' : `${E.WEEKDAYS[E.weekday(date)]}, ${E.fmtLong(date)} is`;
   const q = question.toLowerCase();
   const b = E.parseISO(profile.birth);
   const c = E.chart(b, date, profile);
@@ -89,7 +91,7 @@ export function answer(question, profile, date = E.today()) {
     return `**Personal Year ${c.personalYear.value}** (until ${E.fmtShort(c.personalYear.end)}): ${num(c.personalYear.value).year.text}\n\n**Personal Month ${c.personalMonth.value}** (until ${E.fmtShort(c.personalMonth.end)}): ${num(c.personalMonth.value).month}`;
   }
   if (/today|day|now|energy/.test(q)) {
-    return `Today is a **Universal ${r.ud} day** (${r.title}) and scores **${r.score}%** for you. ${r.text}\n\nGood for: ${r.good.join('; ')}.\nWatch for: ${r.watch.join('; ')}.\n\n${r.combo.text}`;
+    return `${When} a **Universal ${r.ud} day** (${r.title}) and scores **${r.score}%** for you. ${r.text}\n\nGood for: ${r.good.join('; ')}.\nWatch for: ${r.watch.join('; ')}.\n\n${r.combo.text}`;
   }
   if (/strength|good at|talent/.test(q)) return `Your strengths: ${lp.strengths.join(', ')}. ${lp.advantages}`;
   if (/weak|problem|struggle|challenge/.test(q)) return `Your growth edges: ${lp.weaknesses.join(', ')}. ${lp.problem}\n\nWhat helps: ${lp.needToDo}`;
@@ -97,7 +99,7 @@ export function answer(question, profile, date = E.today()) {
   if (/lucky|luck|color|colour/.test(q)) return `Lucky numbers: ${c.lucky.join(' · ')}. Lucky colors: ${lp.colors.join(', ')}. Days of the month that echo your ${c.lifePath}: ${luckyDays(c.lifePath).join(', ')}.`;
   if (/tiger|rat|ox|rabbit|dragon|snake|horse|goat|monkey|rooster|dog|pig|chinese|zodiac/.test(q)) return `You're a **${c.chinese.element} ${c.chinese.animal}** (${c.chinese.polarity}). ${ani.overview}`;
   if (/sign|pisces|aries|taurus|gemini|cancer|leo|virgo|libra|scorpio|sagittarius|capricorn|aquarius|horoscope/.test(q)) return `You're a **${c.sign.name}** (${c.sign.element}, ${c.sign.modality}, ruled by ${c.sign.ruler}). ${sig.overview}`;
-  return `Here's your snapshot: Life Path **${c.lifePath}** (${lp.title}), ${c.chinese.element} ${c.chinese.animal}, ${c.sign.name}. Today is a ${r.ud} day at ${r.score}% for you.\n\nTry asking about **love**, **career**, **this week**, **my year**, **lucky numbers**, or "compatibility with 1990-05-12".`;
+  return `Here's the snapshot: Life Path **${c.lifePath}** (${lp.title}), ${c.chinese.element} ${c.chinese.animal}, ${c.sign.name}. ${When} a ${r.ud} day at ${r.score}%.\n\nTry asking about **love**, **career**, **this week**, **my year**, **lucky numbers**, or "compatibility with 1990-05-12".`;
 }
 
 export const luckyDays = (lp) => Array.from({ length: 31 }, (_, i) => i + 1).filter((d) => E.root(E.reduce(d)) === E.root(lp));

@@ -1,3 +1,5 @@
+import { skyAt } from './astro.js';
+
 // Numerology + astrology calculations. Dates are plain {y, m, d} objects
 // (month 1-12) so nothing depends on the browser's time zone.
 
@@ -70,6 +72,8 @@ export function personalYearInfo(b, date) {
 }
 
 const clampDay = (y, m, d) => Math.min(d, daysInMonth(y, m));
+// The birthday as it falls in year y (Feb 29 -> Feb 28 in common years).
+export const birthdayIn = (b, y) => ({ y, m: b.m, d: clampDay(y, b.m, b.d) });
 
 // Personal months start on the birth day-of-month.
 export function personalMonthInfo(b, date) {
@@ -246,13 +250,8 @@ export const signCompat = (a, b) => ({ 'same element': 92, complementary: 86, 's
 
 // ---------- moon phase ----------
 export function moonPhase(dt) {
-  const synodic = 29.530588853;
-  const days = (Date.UTC(dt.y, dt.m - 1, dt.d, 12) - Date.UTC(2000, 0, 6, 18, 14)) / 864e5;
-  const age = ((days % synodic) + synodic) % synodic;
-  const names = ['New Moon', 'Waxing Crescent', 'First Quarter', 'Waxing Gibbous', 'Full Moon', 'Waning Gibbous', 'Last Quarter', 'Waning Crescent'];
-  const idx = Math.floor(((age / synodic) * 8) + 0.5) % 8;
-  const illum = Math.round((1 - Math.cos((2 * Math.PI * age) / synodic)) * 50);
-  return { name: names[idx], age: Math.round(age * 10) / 10, illumination: illum };
+  const sky = skyAt(dt, 12);
+  return { ...sky.phase, sign: sky.Moon.signName };
 }
 
 // ---------- bundled profile ----------

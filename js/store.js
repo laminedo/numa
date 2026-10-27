@@ -4,7 +4,7 @@ const KEY = 'numa.v1';
 function load() {
   try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch { return {}; }
 }
-const state = Object.assign({ profile: null, saved: [], journal: {}, chat: [] }, load());
+const state = Object.assign({ profile: null, saved: [], journal: {}, chat: [], brand: '' }, load());
 
 function save() {
   try { localStorage.setItem(KEY, JSON.stringify(state)); } catch { /* private mode */ }
@@ -13,7 +13,10 @@ function save() {
 export const store = {
   get profile() { return state.profile; },
   setProfile(p) { state.profile = { ...state.profile, ...p }; save(); },
-  clearAll() { Object.assign(state, { profile: null, saved: [], journal: {}, chat: [] }); save(); },
+  clearAll() { Object.assign(state, { profile: null, saved: [], journal: {}, chat: [], brand: '' }); save(); },
+
+  get brand() { return state.brand || ''; },
+  setBrand(v) { state.brand = v; save(); },
 
   get saved() { return state.saved; },
   toggleSaved(date, label) {

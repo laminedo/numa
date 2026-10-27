@@ -13,7 +13,7 @@ export function search({ profile, date, params }) {
   const q = (params.get('q') || '').trim();
   const tool = params.get('tool');
   let cat = params.get('cat');
-  if (q && !cat) cat = CATEGORIES.find((c) => q.toLowerCase().includes(c.label.toLowerCase().replace(/s$/, '')) || (c.id === 'locations' && /cit|place|countr|live/.test(q.toLowerCase())))?.id;
+  if (q && !cat) cat = CATEGORIES.find((c) => new RegExp(`\\b${c.label.toLowerCase().replace(/s$/, '')}s?\\b`).test(q.toLowerCase()) || (c.id === 'locations' && /\b(cit(y|ies)|places?|countr(y|ies))\b/.test(q.toLowerCase())))?.id;
 
   let body;
   if (tool === 'checker') body = checker(b, params);
@@ -38,7 +38,7 @@ export function search({ profile, date, params }) {
 }
 
 function explore(b, lp, date) {
-  const near = PEOPLE.map((p) => ({ ...p, d: E.parseISO(p.date) })).map((p) => ({ ...p, dist: Math.abs(E.diffDays({ y: 2000, m: date.m, d: date.d }, { y: 2000, m: p.d.m, d: p.d.d })) }));
+  const near = PEOPLE.map((p) => ({ ...p, d: E.parseISO(p.date) })).map((p) => { const raw = Math.abs(E.diffDays({ y: 2000, m: date.m, d: date.d }, { y: 2000, m: p.d.m, d: p.d.d })); return { ...p, dist: Math.min(raw, 366 - raw) }; });
   const onDate = near.filter((p) => p.dist === 0);
   const week = near.filter((p) => p.dist > 0 && p.dist <= 4).sort((a, c) => a.dist - c.dist);
   const same = PEOPLE.filter((p) => E.lifePath(E.parseISO(p.date)).value === lp);
@@ -48,7 +48,7 @@ function explore(b, lp, date) {
     ...onDate.map((p) => ({ ...p, tag: 'On This Date' })),
     ...week.map((p) => ({ ...p, tag: 'This Week' })),
     ...same.filter((p) => p !== star).slice(0, 6).map((p) => ({ ...p, tag: `Life Path ${lp}` })),
-  ];
+  ].filter((p, i, all) => all.findIndex((x) => x.name === p.name) === i);
   const picks = CATEGORIES.filter((c) => c.items).map((c) => ({ c, best: rank(c.items, lp)[0] })).sort((a, x) => x.best.score - a.best.score).slice(0, 4);
   return `
   ${sectionTitle('Explore Your World')}
