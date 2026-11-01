@@ -2,6 +2,7 @@
 // and packages them as a PDF, images or post text.
 import { allSigns, skySummary, stars, captionFor, captionAll, GENERATORS, SIGN_NAMES, weekStart } from './horoscope.js';
 import { jpegsToPdf } from './pdf.js';
+import { zip } from './zip.js';
 
 const W = 1080, H = 1350, M = 84;
 const TEXT_W = W - M * 2;
@@ -204,12 +205,19 @@ function save(blob, name) {
   setTimeout(() => URL.revokeObjectURL(a.href), 60_000);
 }
 
-async function shareOrSave(files) {
-  if (navigator.canShare?.({ files })) {
+// Phones get the share sheet (Save to Photos, Facebook). Computers download
+// instead: their share menus have no Save option, and several photos go in
+// one ZIP so the browser doesn't block a burst of downloads.
+async function shareOrSave(files, zipName) {
+  const phone = matchMedia('(pointer: coarse)').matches;
+  if (phone && navigator.canShare?.({ files })) {
     try { await navigator.share({ files }); return 'shared'; } catch (e) { if (e.name === 'AbortError') return 'cancelled'; }
   }
-  for (const f of files) { save(f, f.name); await new Promise((r) => setTimeout(r, 350)); }
-  return 'saved';
+  if (files.length === 1 || !zipName) { save(files[0], files[0].name); return 'saved'; }
+  const entries = [];
+  for (const f of files) entries.push({ name: f.name, bytes: new Uint8Array(await f.arrayBuffer()) });
+  save(zip(entries), zipName);
+  return 'zipped';
 }
 
 export async function exportPdf(period, date, opts) {
@@ -226,7 +234,7 @@ export async function exportImages(period, date, opts) {
   const { pages } = await buildAll(period, date, opts);
   const files = [];
   for (const [i, p] of pages.entries()) files.push(new File([await toJpeg(p, 0.92)], `numa-${stamp(period, date)}-${String(i).padStart(2, '0')}.jpg`, { type: 'image/jpeg' }));
-  return shareOrSave(files);
+  return shareOrSave(files, `numa-${stamp(period, date)}-photos.zip`);
 }
 
 export async function exportSign(s, period, date, opts) {
