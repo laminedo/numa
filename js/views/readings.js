@@ -35,12 +35,12 @@ export function readings({ profile, date, params }) {
 
   <div class="glass card export" data-p="${period}" data-d="${E.toISO(sel)}">
     <h3>Share on Facebook</h3>
-    <p class="muted">Each sign is drawn on 1080×1350 portrait pages, the size Facebook shows best, after a cover with the sky and numerology for the ${period === 'daily' ? 'day' : period === 'weekly' ? 'week' : 'month'}. Download the full set as one PDF, share the pages as photos, or copy ready-made post text.</p>
+    <p class="muted">Each sign is drawn on 1080×1350 portrait pages, the size Facebook shows best, after a cover with the sky and numerology for the ${period === 'daily' ? 'day' : period === 'weekly' ? 'week' : 'month'}. Save the pages as JPG photos and add them all to one Facebook post with Photo/video, then paste the ready-made post text.</p>
     <label class="brand-field">Name printed on the pages<input name="brand" value="${esc(store.brand)}" placeholder="Your Facebook page name (optional)" maxlength="40"></label>
     <div class="row-btns">
-      <button class="btn gold small" data-action="export-pdf">${icon('book', 18)} Download PDF</button>
-      <button class="btn ghost small" data-action="export-images">${icon('share', 18)} Share as photos</button>
+      <button class="btn gold small" data-action="export-images">${icon('share', 18)} Save photos (JPG)</button>
       <button class="btn ghost small" data-action="copy-all">${icon('chat', 18)} Copy post text</button>
+      <button class="btn ghost small" data-action="export-pdf">${icon('book', 18)} PDF</button>
     </div>
   </div>
 

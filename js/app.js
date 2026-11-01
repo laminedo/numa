@@ -192,7 +192,7 @@ async function exportAction(el, a) {
   el.disabled = true; el.textContent = 'Preparing…';
   try {
     if (a === 'export-pdf') { const r = await exportPdf(period, date, opts); toast(`PDF ready: ${r.pages} pages, ${(r.bytes / 1048576).toFixed(1)} MB`); }
-    if (a === 'export-images') { const r = await exportImages(period, date, opts); if (r === 'saved') toast('Images saved'); }
+    if (a === 'export-images') { const r = await exportImages(period, date, opts); if (r === 'saved') toast('Photos saved. In Facebook, choose Photo/video and select them all.'); }
     if (a === 'sign-image') { const r = await exportSign(+el.dataset.s, period, date, opts); if (r === 'saved') toast('Image saved'); }
   } catch (err) {
     console.error(err);
