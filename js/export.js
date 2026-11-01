@@ -83,81 +83,66 @@ function glyphBadge(g, x, y, r, glyph, element) {
 }
 
 // ---------- sign pages ----------
+// Each sign gets one page: the layout is drawn at the largest text scale that
+// fits, shrinking step by step for longer (weekly, monthly) readings.
 export async function signPages(r, opts) {
   await fontsReady();
-  const P = `400 29px ${SANS}`, T = `700 24px ${SANS}`, LH = 41;
-  const blocks = [];
-  // Sections shared by all 12 signs (numerology) are printed once, on the cover.
-  for (const s of r.sections.filter((x) => !x.shared)) {
-    blocks.push({ kind: 'title', text: s.title.toUpperCase() });
-    blocks.push({ kind: 'para', lines: null, text: s.text });
-  }
+  const sections = r.sections.filter((x) => !x.shared); // shared numerology is printed once, on the cover
   const luck = r.period === 'daily'
     ? `Lucky number ${r.lucky.number} · ${r.lucky.color} · Best time: ${r.lucky.time}`
     : `Best days: ${r.lucky.days.join(', ')} · Color: ${r.lucky.color}`;
-  blocks.push({ kind: 'meta', rows: [['Focus', r.focus.join(', '), C.green], ['Avoid', r.avoid.join(', '), C.rose], ['Lucky', luck, C.gold]] });
+  const rows = [['Focus', r.focus.join(', '), C.green], ['Avoid', r.avoid.join(', '), C.rose], ['Lucky', luck, C.gold]];
+  const [cv, g] = canvas();
 
-  const pages = [];
-  let g, cv, y;
-  const newPage = (first) => {
-    [cv, g] = canvas();
-    backdrop(g, r.sign.length * 7 + pages.length);
-    topBar(g, opts.brand || 'NUMA', `${r.period} horoscope`);
-    if (first) {
-      glyphBadge(g, M + 66, 262, 72, r.glyph, r.element);
-      g.font = `800 66px ${SANS}`; g.fillStyle = C.text; g.fillText(r.sign, M + 162, 258);
-      g.font = `500 27px ${SANS}`; g.fillStyle = C.muted; g.fillText(`${r.dates} · ${r.element} · ${r.ruler}`, M + 164, 302);
-      g.font = `400 38px ${SYMBOL}`; g.fillStyle = C.gold; g.fillText(stars(r.rating), M + 162, 352);
-      g.font = `600 27px ${SANS}`; g.fillStyle = C.orange; g.fillText(r.label, M, 420);
-      const head = wrap(g, r.headline, `800 46px ${SANS}`, TEXT_W);
-      g.fillStyle = C.text; head.forEach((l, i) => g.fillText(l, M, 478 + i * 54));
-      y = 478 + head.length * 54 + 6;
-    } else {
-      glyphBadge(g, M + 34, 214, 36, r.glyph, r.element);
-      g.font = `800 40px ${SANS}`; g.fillStyle = C.text; g.fillText(r.sign, M + 88, 226);
-      const nameW = g.measureText(r.sign).width;
-      g.font = `500 24px ${SANS}`; g.fillStyle = C.muted; g.fillText(`continued · ${r.label}`, M + 104 + nameW, 224);
-      y = 300;
+  // Lays the page out at scale k; draws only when asked. Returns the bottom y.
+  const layout = (k, draw) => {
+    const px = (n) => Math.round(n * k);
+    const P = `400 ${px(29)}px ${SANS}`, T = `700 ${px(24)}px ${SANS}`, LH = px(41);
+    const H1 = `800 ${px(46)}px ${SANS}`, M1 = `500 ${px(26)}px ${SANS}`, KEY = px(130);
+    const badge = Math.max(44, px(72));
+    if (draw) {
+      backdrop(g, r.sign.length * 7);
+      topBar(g, opts.brand || 'NUMA', `${r.period} horoscope`);
+      glyphBadge(g, M + badge - 6, 190 + badge, badge, r.glyph, r.element);
+      const tx = M + badge * 2 + 18;
+      g.font = `800 ${Math.max(46, px(66))}px ${SANS}`; g.fillStyle = C.text; g.fillText(r.sign, tx, 190 + badge * 0.95);
+      g.font = `500 ${Math.max(22, px(27))}px ${SANS}`; g.fillStyle = C.muted; g.fillText(`${r.dates} · ${r.element} · ${r.ruler}`, tx + 2, 190 + badge * 1.5);
+      g.font = `400 ${Math.max(28, px(38))}px ${SYMBOL}`; g.fillStyle = C.gold; g.fillText(stars(r.rating), tx, 190 + badge * 2.15);
     }
-    pages.push(cv);
+    let y = 190 + badge * 2 + px(86);
+    if (draw) { g.font = `600 ${px(27)}px ${SANS}`; g.fillStyle = C.orange; g.fillText(r.label, M, y); }
+    y += px(58);
+    for (const l of wrap(g, r.headline, H1, TEXT_W)) { if (draw) { g.font = H1; g.fillStyle = C.text; g.fillText(l, M, y); } y += px(54); }
+    y += px(6);
+    for (const s of sections) {
+      if (draw) {
+        g.font = T; g.fillStyle = C.orange;
+        if ('letterSpacing' in g) g.letterSpacing = '2px';
+        g.fillText(s.title.toUpperCase(), M, y + px(30));
+        if ('letterSpacing' in g) g.letterSpacing = '0px';
+      }
+      y += px(48);
+      for (const line of wrap(g, s.text, P, TEXT_W)) { if (draw) { g.font = P; g.fillStyle = C.text; g.fillText(line, M, y + px(30)); } y += LH; }
+      y += px(16);
+    }
+    if (draw) { g.strokeStyle = 'rgba(255,255,255,.14)'; g.lineWidth = 2; g.beginPath(); g.moveTo(M, y + 4); g.lineTo(W - M, y + 4); g.stroke(); }
+    y += px(22);
+    for (const [key, v, color] of rows) {
+      const lines = wrap(g, v, M1, TEXT_W - KEY);
+      if (draw) {
+        g.font = `700 ${px(24)}px ${SANS}`; g.fillStyle = color; g.fillText(key.toUpperCase(), M, y + px(28));
+        g.font = M1; g.fillStyle = C.text; lines.forEach((l, j) => g.fillText(l, M + KEY, y + px(28) + j * px(36)));
+      }
+      y += lines.length * px(36) + px(14);
+    }
+    return y;
   };
-  newPage(true);
-  for (let i = 0; i < blocks.length; i++) {
-    const b = blocks[i];
-    if (b.kind === 'title') {
-      // Keep a section on one page when it fits on a fresh page; otherwise
-      // only require the heading plus two lines before breaking.
-      const lines = wrap(g, blocks[i + 1].text, P, TEXT_W).length;
-      const whole = 48 + LH * lines;
-      const fitsFresh = whole <= BODY_BOTTOM - 300;
-      if (y + (fitsFresh ? whole : 48 + LH * 2) > BODY_BOTTOM) newPage(false);
-      g.font = T; g.fillStyle = C.orange;
-      if ('letterSpacing' in g) g.letterSpacing = '2px';
-      g.fillText(b.text, M, y + 30);
-      if ('letterSpacing' in g) g.letterSpacing = '0px';
-      y += 48;
-    } else if (b.kind === 'para') {
-      for (const line of wrap(g, b.text, P, TEXT_W)) {
-        if (y + LH > BODY_BOTTOM) newPage(false);
-        g.font = P; g.fillStyle = C.text; g.fillText(line, M, y + 30);
-        y += LH;
-      }
-      y += 16;
-    } else {
-      const rowsH = b.rows.reduce((t, [, v]) => t + wrap(g, v, `500 26px ${SANS}`, TEXT_W - 130).length * 36 + 14, 22);
-      if (y + rowsH > BODY_BOTTOM) newPage(false);
-      g.strokeStyle = 'rgba(255,255,255,.14)'; g.beginPath(); g.moveTo(M, y + 4); g.lineTo(W - M, y + 4); g.stroke();
-      y += 22;
-      for (const [k, v, color] of b.rows) {
-        g.font = `700 24px ${SANS}`; g.fillStyle = color; g.fillText(k.toUpperCase(), M, y + 28);
-        const lines = wrap(g, v, `500 26px ${SANS}`, TEXT_W - 130);
-        g.fillStyle = C.text; lines.forEach((l, j) => g.fillText(l, M + 130, y + 28 + j * 36));
-        y += lines.length * 36 + 14;
-      }
-    }
-  }
-  pages.forEach((p, i) => footer(p.getContext('2d'), opts, pages.length > 1 ? `${i + 1}/${pages.length}` : ''));
-  return pages;
+
+  let k = 1;
+  while (k > 0.5 && layout(k, false) > BODY_BOTTOM) k -= 0.02;
+  layout(k, true);
+  footer(g, opts, '');
+  return [cv];
 }
 
 // ---------- cover ----------
