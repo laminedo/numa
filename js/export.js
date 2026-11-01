@@ -54,7 +54,7 @@ function topBar(g, left, right) {
 
 function footer(g, opts, page) {
   g.font = `500 22px ${SANS}`; g.fillStyle = C.muted; g.textAlign = 'center';
-  g.fillText(`${opts.brand ? `${opts.brand} · ` : ''}${opts.link.replace(/^https?:\/\//, '').replace(/\/$/, '')}`, W / 2, H - 58);
+  if (opts.brand) g.fillText(opts.brand, W / 2, H - 58);
   g.font = `400 18px ${SANS}`; g.fillStyle = 'rgba(198,187,234,.7)';
   g.fillText(`For reflection and entertainment${page ? ` · ${page}` : ''}`, W / 2, H - 30);
   g.textAlign = 'left';
